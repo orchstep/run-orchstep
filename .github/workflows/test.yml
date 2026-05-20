@@ -37,12 +37,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run with vars
+        id: r
         uses: ./
         with:
           workflow: tests/fixtures/test.orchstep.yml
           task: greet
           vars: |
             name=ci
+      - name: Assert the greet task ran with the var
+        shell: bash
+        run: |
+          test "${{ steps.r.outputs.exit-code }}" = "0"
+          echo "${{ steps.r.outputs.summary }}" | grep -q "hello ci"
 
   fail-on-error-false:
     runs-on: ubuntu-latest
