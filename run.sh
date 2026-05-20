@@ -41,15 +41,25 @@ main() {
   local task="${INPUT_TASK:-}"
   local workdir="${INPUT_WORKING_DIRECTORY:-${GITHUB_WORKSPACE:-.}}"
 
-  cd "$workdir"
+  cd "$workdir" || { echo "ERROR: working-directory '$workdir' not found" >&2; exit 1; }
 
+  local cmd_raw
+  if ! cmd_raw="$(build_command "$cmd" "$workflow" "$task")"; then
+    exit 1
+  fi
   local argv=()
-  mapfile -t argv < <(build_command "$cmd" "$workflow" "$task")
+  mapfile -t argv <<< "$cmd_raw"
 
   if [[ -n "${INPUT_VARS:-}" ]]; then
-    local var_args=()
-    mapfile -t var_args < <(printf '%s\n' "$INPUT_VARS" | parse_vars)
-    argv+=("${var_args[@]}")
+    local var_raw
+    if ! var_raw="$(printf '%s\n' "$INPUT_VARS" | parse_vars)"; then
+      exit 1
+    fi
+    if [[ -n "$var_raw" ]]; then
+      local var_args=()
+      mapfile -t var_args <<< "$var_raw"
+      argv+=("${var_args[@]}")
+    fi
   fi
   if [[ -n "${INPUT_VARS_FILE:-}" ]]; then
     argv+=("--vars-file" "$INPUT_VARS_FILE")
@@ -59,23 +69,31 @@ main() {
   fi
   if [[ -n "${INPUT_EXTRA_ARGS:-}" ]]; then
     local extra=()
+    set -f
     # shellcheck disable=SC2206
     extra=(${INPUT_EXTRA_ARGS})
+    set +f
     argv+=("${extra[@]}")
   fi
 
-  local out_file
+  # out_file is intentionally a global so the EXIT trap can still see it
+  # after main() returns (function locals go out of scope at that point).
   out_file="$(mktemp)"
+  trap 'rm -f "${out_file:-}"' EXIT
   local code=0
   set +e
   orchstep "${argv[@]}" 2>&1 | tee "$out_file"
   code="${PIPESTATUS[0]}"
   set -e
 
+  local total_lines
+  total_lines="$(wc -l < "$out_file")"
+
   {
     echo "exit-code=${code}"
     echo "summary<<__ORCHSTEP_EOF__"
     head -50 "$out_file"
+    [[ "$total_lines" -gt 50 ]] && echo "... (output truncated)"
     echo "__ORCHSTEP_EOF__"
   } >> "${GITHUB_OUTPUT:-/dev/stdout}"
 
@@ -84,12 +102,12 @@ main() {
     echo ''
     echo '```'
     head -100 "$out_file"
+    [[ "$total_lines" -gt 100 ]] && echo "... (output truncated)"
     echo '```'
   } >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
-  rm -f "$out_file"
-
-  if [[ "${INPUT_FAIL_ON_ERROR:-true}" == "true" && "$code" -ne 0 ]]; then
+  local fail_on_error="${INPUT_FAIL_ON_ERROR:-true}"
+  if [[ "${fail_on_error,,}" != "false" && "$code" -ne 0 ]]; then
     exit "$code"
   fi
 }

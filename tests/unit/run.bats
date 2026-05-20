@@ -117,3 +117,131 @@ setup() {
   [ "$status" -eq 3 ]
   rm -rf "$tmp"
 }
+
+@test "main passes run --file <workflow> with a trailing task positional" {
+  local tmp; tmp="$(mktemp -d)"
+  cp "${BATS_TEST_DIRNAME}/../fixtures/fake-orchstep.sh" "${tmp}/orchstep"
+  chmod +x "${tmp}/orchstep"
+  echo "tasks:" > "${tmp}/wf.yml"
+  PATH="${tmp}:${PATH}" \
+  INPUT_COMMAND="run" \
+  INPUT_WORKFLOW="wf.yml" \
+  INPUT_TASK="release" \
+  INPUT_WORKING_DIRECTORY="${tmp}" \
+  GITHUB_OUTPUT="${tmp}/out" \
+  GITHUB_STEP_SUMMARY="${tmp}/summary" \
+    run bash "${BATS_TEST_DIRNAME}/../../run.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"fake-orchstep called with: run --file wf.yml release"* ]]
+  rm -rf "$tmp"
+}
+
+@test "main passes multiple --var pairs when INPUT_VARS has multiple lines" {
+  local tmp; tmp="$(mktemp -d)"
+  cp "${BATS_TEST_DIRNAME}/../fixtures/fake-orchstep.sh" "${tmp}/orchstep"
+  chmod +x "${tmp}/orchstep"
+  echo "tasks:" > "${tmp}/wf.yml"
+  PATH="${tmp}:${PATH}" \
+  INPUT_COMMAND="run" \
+  INPUT_WORKFLOW="wf.yml" \
+  INPUT_VARS=$'a=1\nb=2' \
+  INPUT_WORKING_DIRECTORY="${tmp}" \
+  GITHUB_OUTPUT="${tmp}/out" \
+  GITHUB_STEP_SUMMARY="${tmp}/summary" \
+    run bash "${BATS_TEST_DIRNAME}/../../run.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--var a=1"* ]]
+  [[ "$output" == *"--var b=2"* ]]
+  rm -rf "$tmp"
+}
+
+@test "main fails when INPUT_VARS contains a malformed line" {
+  local tmp; tmp="$(mktemp -d)"
+  cp "${BATS_TEST_DIRNAME}/../fixtures/fake-orchstep.sh" "${tmp}/orchstep"
+  chmod +x "${tmp}/orchstep"
+  echo "tasks:" > "${tmp}/wf.yml"
+  PATH="${tmp}:${PATH}" \
+  INPUT_COMMAND="run" \
+  INPUT_WORKFLOW="wf.yml" \
+  INPUT_VARS=$'a=1\nBADLINE\nb=2' \
+  INPUT_WORKING_DIRECTORY="${tmp}" \
+  GITHUB_OUTPUT="${tmp}/out" \
+  GITHUB_STEP_SUMMARY="${tmp}/summary" \
+    run bash "${BATS_TEST_DIRNAME}/../../run.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"invalid var line"* ]]
+  rm -rf "$tmp"
+}
+
+@test "main passes --vars-file when INPUT_VARS_FILE is set" {
+  local tmp; tmp="$(mktemp -d)"
+  cp "${BATS_TEST_DIRNAME}/../fixtures/fake-orchstep.sh" "${tmp}/orchstep"
+  chmod +x "${tmp}/orchstep"
+  echo "tasks:" > "${tmp}/wf.yml"
+  echo "a=1" > "${tmp}/vars.env"
+  PATH="${tmp}:${PATH}" \
+  INPUT_COMMAND="run" \
+  INPUT_WORKFLOW="wf.yml" \
+  INPUT_VARS_FILE="vars.env" \
+  INPUT_WORKING_DIRECTORY="${tmp}" \
+  GITHUB_OUTPUT="${tmp}/out" \
+  GITHUB_STEP_SUMMARY="${tmp}/summary" \
+    run bash "${BATS_TEST_DIRNAME}/../../run.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--vars-file vars.env"* ]]
+  rm -rf "$tmp"
+}
+
+@test "main passes --env when INPUT_ENV is set" {
+  local tmp; tmp="$(mktemp -d)"
+  cp "${BATS_TEST_DIRNAME}/../fixtures/fake-orchstep.sh" "${tmp}/orchstep"
+  chmod +x "${tmp}/orchstep"
+  echo "tasks:" > "${tmp}/wf.yml"
+  PATH="${tmp}:${PATH}" \
+  INPUT_COMMAND="run" \
+  INPUT_WORKFLOW="wf.yml" \
+  INPUT_ENV="staging" \
+  INPUT_WORKING_DIRECTORY="${tmp}" \
+  GITHUB_OUTPUT="${tmp}/out" \
+  GITHUB_STEP_SUMMARY="${tmp}/summary" \
+    run bash "${BATS_TEST_DIRNAME}/../../run.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--env staging"* ]]
+  rm -rf "$tmp"
+}
+
+@test "main runs lint <workflow> when INPUT_COMMAND=lint" {
+  local tmp; tmp="$(mktemp -d)"
+  cp "${BATS_TEST_DIRNAME}/../fixtures/fake-orchstep.sh" "${tmp}/orchstep"
+  chmod +x "${tmp}/orchstep"
+  echo "tasks:" > "${tmp}/wf.yml"
+  PATH="${tmp}:${PATH}" \
+  INPUT_COMMAND="lint" \
+  INPUT_WORKFLOW="wf.yml" \
+  INPUT_WORKING_DIRECTORY="${tmp}" \
+  GITHUB_OUTPUT="${tmp}/out" \
+  GITHUB_STEP_SUMMARY="${tmp}/summary" \
+    run bash "${BATS_TEST_DIRNAME}/../../run.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"fake-orchstep called with: lint wf.yml"* ]]
+  rm -rf "$tmp"
+}
+
+@test "main writes a non-empty summary value to GITHUB_OUTPUT" {
+  local tmp; tmp="$(mktemp -d)"
+  cp "${BATS_TEST_DIRNAME}/../fixtures/fake-orchstep.sh" "${tmp}/orchstep"
+  chmod +x "${tmp}/orchstep"
+  echo "tasks:" > "${tmp}/wf.yml"
+  PATH="${tmp}:${PATH}" \
+  INPUT_COMMAND="run" \
+  INPUT_WORKFLOW="wf.yml" \
+  INPUT_WORKING_DIRECTORY="${tmp}" \
+  GITHUB_OUTPUT="${tmp}/out" \
+  GITHUB_STEP_SUMMARY="${tmp}/summary" \
+    run bash "${BATS_TEST_DIRNAME}/../../run.sh"
+  [ "$status" -eq 0 ]
+  grep -q "summary<<__ORCHSTEP_EOF__" "${tmp}/out"
+  run bash -c 'sed -n "/^summary<<__ORCHSTEP_EOF__$/,/^__ORCHSTEP_EOF__$/p" "'"${tmp}"'/out" | sed "1d;\$d"'
+  [ -n "$output" ]
+  rm -rf "$tmp"
+}
