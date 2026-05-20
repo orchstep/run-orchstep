@@ -1,0 +1,98 @@
+name: 'Run OrchStep'
+description: 'Run an OrchStep workflow, lint, or list-tasks in a single step'
+author: 'OrchStep'
+
+branding:
+  icon: 'play-circle'
+  color: 'blue'
+
+inputs:
+  workflow:
+    description: 'Path to the workflow file (relative to working-directory)'
+    required: true
+  task:
+    description: 'Named task to run (run command only; default: the main task)'
+    required: false
+    default: ''
+  command:
+    description: 'Subcommand: run, lint, or list-tasks'
+    required: false
+    default: 'run'
+  vars:
+    description: 'Multi-line KEY=VALUE pairs passed as --var'
+    required: false
+    default: ''
+  vars-file:
+    description: 'Path to a YAML vars file passed as --vars-file'
+    required: false
+    default: ''
+  env:
+    description: 'Environment name passed as --env (dev, staging, production, ...)'
+    required: false
+    default: ''
+  working-directory:
+    description: 'Directory to run from'
+    required: false
+    default: ${{ github.workspace }}
+  version:
+    description: 'OrchStep CLI version to install: "latest" or a semver'
+    required: false
+    default: 'latest'
+  extra-args:
+    description: 'Additional CLI arguments passed verbatim'
+    required: false
+    default: ''
+  fail-on-error:
+    description: 'Fail the action when the CLI exits nonzero'
+    required: false
+    default: 'true'
+
+outputs:
+  exit-code:
+    description: 'The exit code returned by the OrchStep CLI'
+    value: ${{ steps.run.outputs.exit-code }}
+  summary:
+    description: 'The first 50 lines of CLI output'
+    value: ${{ steps.run.outputs.summary }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve install plan
+      id: plan
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: bash "${{ github.action_path }}/install.sh" plan
+
+    - name: Restore cached binary
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.plan.outputs.install-dir }}
+        key: ${{ steps.plan.outputs.cache-key }}
+
+    - name: Install OrchStep
+      shell: bash
+      env:
+        PLAN_VERSION: ${{ steps.plan.outputs.version }}
+        PLAN_OS: ${{ steps.plan.outputs.os }}
+        PLAN_ARCH: ${{ steps.plan.outputs.arch }}
+        PLAN_INSTALL_DIR: ${{ steps.plan.outputs.install-dir }}
+        INPUT_ADD_TO_PATH: 'true'
+      run: bash "${{ github.action_path }}/install.sh" install
+
+    - name: Run OrchStep
+      id: run
+      shell: bash
+      env:
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_WORKFLOW: ${{ inputs.workflow }}
+        INPUT_TASK: ${{ inputs.task }}
+        INPUT_VARS: ${{ inputs.vars }}
+        INPUT_VARS_FILE: ${{ inputs.vars-file }}
+        INPUT_ENV: ${{ inputs.env }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
+        INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+      run: bash "${{ github.action_path }}/run.sh"
