@@ -1,0 +1,12 @@
+name: run-with-vars-example
+desc: Echoes a greeting passed in as a variable
+
+tasks:
+  main:
+    desc: Print the greeting variable
+    steps:
+      - name: greet
+        desc: Echo the greeting variable
+        func: shell
+        args:
+          cmd: echo "{{ greeting }}"

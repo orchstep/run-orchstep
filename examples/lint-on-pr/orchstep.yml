@@ -1,0 +1,17 @@
+name: lint-on-pr-example
+desc: A small, clean workflow that orchstep lint passes
+
+tasks:
+  main:
+    desc: Run a couple of shell steps
+    steps:
+      - name: build
+        desc: Pretend to build the project
+        func: shell
+        args:
+          cmd: echo 'building project'
+      - name: test
+        desc: Pretend to run the test suite
+        func: shell
+        args:
+          cmd: echo 'running tests'
