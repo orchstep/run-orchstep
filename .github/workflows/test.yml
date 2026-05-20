@@ -59,7 +59,7 @@ jobs:
         uses: ./
         with:
           workflow: tests/fixtures/test.orchstep.yml
-          task: this-task-does-not-exist
+          task: fail
           fail-on-error: 'false'
       - name: Assert the step recorded a nonzero exit code
         shell: bash

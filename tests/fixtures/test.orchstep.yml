@@ -18,4 +18,13 @@ tasks:
         desc: Echo the name variable
         func: shell
         args:
-          cmd: echo "hello {{ name }}"
+          cmd: echo "hello {{ vars.name }}"
+
+  fail:
+    desc: Deliberately fail by exiting non-zero
+    steps:
+      - name: boom
+        desc: Exit with a non-zero status
+        func: shell
+        args:
+          cmd: exit 1

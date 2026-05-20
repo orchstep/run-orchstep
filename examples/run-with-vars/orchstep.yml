@@ -9,4 +9,4 @@ tasks:
         desc: Echo the greeting variable
         func: shell
         args:
-          cmd: echo "{{ greeting }}"
+          cmd: echo "{{ vars.greeting }}"
