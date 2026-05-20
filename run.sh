@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# OrchStep runner — used by the run-orchstep composite action.
+# Defines pure functions plus a main entrypoint. No top-level `set -e` so it
+# can be sourced by bats; main() enables strict mode itself.
+
+parse_vars() {
+  local line
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    if [[ "$line" != *=* ]]; then
+      echo "ERROR: invalid var line '${line}' (expected KEY=VALUE)" >&2
+      return 1
+    fi
+    printf '%s\n' "--var" "$line"
+  done
+}
+
+main() {
+  set -euo pipefail
+  echo "main not yet implemented" >&2
+  return 1
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
