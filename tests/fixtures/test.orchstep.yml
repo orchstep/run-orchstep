@@ -1,0 +1,21 @@
+name: run-orchstep-test
+desc: Test workflow for run-orchstep integration tests
+
+tasks:
+  main:
+    desc: Default task
+    steps:
+      - name: hello
+        desc: Print a greeting
+        func: shell
+        args:
+          cmd: echo 'hello from orchstep'
+
+  greet:
+    desc: Greet using a variable
+    steps:
+      - name: say
+        desc: Echo the name variable
+        func: shell
+        args:
+          cmd: echo "hello {{ name }}"
