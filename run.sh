@@ -47,8 +47,10 @@ main() {
   if ! cmd_raw="$(build_command "$cmd" "$workflow" "$task")"; then
     exit 1
   fi
+  # bash 3.2 (macOS runners) lacks `mapfile`; use a portable read loop.
   local argv=()
-  mapfile -t argv <<< "$cmd_raw"
+  local line
+  while IFS= read -r line; do argv+=("$line"); done <<< "$cmd_raw"
 
   if [[ -n "${INPUT_VARS:-}" ]]; then
     local var_raw
@@ -57,7 +59,8 @@ main() {
     fi
     if [[ -n "$var_raw" ]]; then
       local var_args=()
-      mapfile -t var_args <<< "$var_raw"
+      local var_line
+      while IFS= read -r var_line; do var_args+=("$var_line"); done <<< "$var_raw"
       argv+=("${var_args[@]}")
     fi
   fi
@@ -107,7 +110,10 @@ main() {
   } >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
   local fail_on_error="${INPUT_FAIL_ON_ERROR:-true}"
-  if [[ "${fail_on_error,,}" != "false" && "$code" -ne 0 ]]; then
+  # bash 3.2 (macOS runners) lacks `${var,,}`; lowercase via tr.
+  local fail_lower
+  fail_lower=$(printf '%s' "$fail_on_error" | tr '[:upper:]' '[:lower:]')
+  if [[ "$fail_lower" != "false" && "$code" -ne 0 ]]; then
     exit "$code"
   fi
 }
