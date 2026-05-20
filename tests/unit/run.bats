@@ -62,3 +62,58 @@ setup() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"unsupported command"* ]]
 }
+
+@test "main runs the CLI and writes exit-code 0 on success" {
+  local tmp; tmp="$(mktemp -d)"
+  cp "${BATS_TEST_DIRNAME}/../fixtures/fake-orchstep.sh" "${tmp}/orchstep"
+  chmod +x "${tmp}/orchstep"
+  echo "tasks:" > "${tmp}/wf.yml"
+  PATH="${tmp}:${PATH}" \
+  INPUT_COMMAND="run" \
+  INPUT_WORKFLOW="wf.yml" \
+  INPUT_WORKING_DIRECTORY="${tmp}" \
+  INPUT_FAIL_ON_ERROR="true" \
+  GITHUB_OUTPUT="${tmp}/out" \
+  GITHUB_STEP_SUMMARY="${tmp}/summary" \
+    run bash "${BATS_TEST_DIRNAME}/../../run.sh"
+  [ "$status" -eq 0 ]
+  grep -q "exit-code=0" "${tmp}/out"
+  rm -rf "$tmp"
+}
+
+@test "main with fail-on-error=false exits 0 but records the nonzero exit-code" {
+  local tmp; tmp="$(mktemp -d)"
+  cp "${BATS_TEST_DIRNAME}/../fixtures/fake-orchstep.sh" "${tmp}/orchstep"
+  chmod +x "${tmp}/orchstep"
+  echo "tasks:" > "${tmp}/wf.yml"
+  PATH="${tmp}:${PATH}" \
+  FAKE_EXIT="3" \
+  INPUT_COMMAND="run" \
+  INPUT_WORKFLOW="wf.yml" \
+  INPUT_WORKING_DIRECTORY="${tmp}" \
+  INPUT_FAIL_ON_ERROR="false" \
+  GITHUB_OUTPUT="${tmp}/out" \
+  GITHUB_STEP_SUMMARY="${tmp}/summary" \
+    run bash "${BATS_TEST_DIRNAME}/../../run.sh"
+  [ "$status" -eq 0 ]
+  grep -q "exit-code=3" "${tmp}/out"
+  rm -rf "$tmp"
+}
+
+@test "main with fail-on-error=true propagates a nonzero exit code" {
+  local tmp; tmp="$(mktemp -d)"
+  cp "${BATS_TEST_DIRNAME}/../fixtures/fake-orchstep.sh" "${tmp}/orchstep"
+  chmod +x "${tmp}/orchstep"
+  echo "tasks:" > "${tmp}/wf.yml"
+  PATH="${tmp}:${PATH}" \
+  FAKE_EXIT="3" \
+  INPUT_COMMAND="run" \
+  INPUT_WORKFLOW="wf.yml" \
+  INPUT_WORKING_DIRECTORY="${tmp}" \
+  INPUT_FAIL_ON_ERROR="true" \
+  GITHUB_OUTPUT="${tmp}/out" \
+  GITHUB_STEP_SUMMARY="${tmp}/summary" \
+    run bash "${BATS_TEST_DIRNAME}/../../run.sh"
+  [ "$status" -eq 3 ]
+  rm -rf "$tmp"
+}

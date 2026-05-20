@@ -35,8 +35,63 @@ build_command() {
 
 main() {
   set -euo pipefail
-  echo "main not yet implemented" >&2
-  return 1
+
+  local cmd="${INPUT_COMMAND:-run}"
+  local workflow="${INPUT_WORKFLOW:?workflow input is required}"
+  local task="${INPUT_TASK:-}"
+  local workdir="${INPUT_WORKING_DIRECTORY:-${GITHUB_WORKSPACE:-.}}"
+
+  cd "$workdir"
+
+  local argv=()
+  mapfile -t argv < <(build_command "$cmd" "$workflow" "$task")
+
+  if [[ -n "${INPUT_VARS:-}" ]]; then
+    local var_args=()
+    mapfile -t var_args < <(printf '%s\n' "$INPUT_VARS" | parse_vars)
+    argv+=("${var_args[@]}")
+  fi
+  if [[ -n "${INPUT_VARS_FILE:-}" ]]; then
+    argv+=("--vars-file" "$INPUT_VARS_FILE")
+  fi
+  if [[ -n "${INPUT_ENV:-}" ]]; then
+    argv+=("--env" "$INPUT_ENV")
+  fi
+  if [[ -n "${INPUT_EXTRA_ARGS:-}" ]]; then
+    local extra=()
+    # shellcheck disable=SC2206
+    extra=(${INPUT_EXTRA_ARGS})
+    argv+=("${extra[@]}")
+  fi
+
+  local out_file
+  out_file="$(mktemp)"
+  local code=0
+  set +e
+  orchstep "${argv[@]}" 2>&1 | tee "$out_file"
+  code="${PIPESTATUS[0]}"
+  set -e
+
+  {
+    echo "exit-code=${code}"
+    echo "summary<<__ORCHSTEP_EOF__"
+    head -50 "$out_file"
+    echo "__ORCHSTEP_EOF__"
+  } >> "${GITHUB_OUTPUT:-/dev/stdout}"
+
+  {
+    echo "### OrchStep \`${cmd}\` — \`${workflow}\`"
+    echo ''
+    echo '```'
+    head -100 "$out_file"
+    echo '```'
+  } >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+
+  rm -f "$out_file"
+
+  if [[ "${INPUT_FAIL_ON_ERROR:-true}" == "true" && "$code" -ne 0 ]]; then
+    exit "$code"
+  fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
