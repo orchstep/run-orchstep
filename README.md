@@ -26,10 +26,17 @@ task of your `orchstep.yml` workflow.
 | `vars`              | Multi-line `KEY=VALUE` pairs passed as `--var`                       | `''`                     |
 | `vars-file`         | Path to a YAML vars file passed as `--vars-file`                     | `''`                     |
 | `env`               | Environment name passed as `--env` (`dev`, `staging`, `production`)  | `''`                     |
+| `output`            | Output format for `run`: `plain` (CI-friendly), `pretty`, or `json`  | `plain`                  |
+| `json-file`         | Also write the structured run result (JSON) to this path             | `''`                     |
 | `working-directory` | Directory to run from                                                | `${{ github.workspace }}`|
 | `version`           | OrchStep CLI version to install: `latest` or a semver                | `latest`                 |
 | `extra-args`        | Additional CLI arguments passed verbatim                             | `''`                     |
 | `fail-on-error`     | Fail the action when the CLI exits nonzero                           | `true`                   |
+
+When a run fails, the action's underlying CLI emits a GitHub `::error`
+annotation (with file + line when available), so the failure shows up inline in
+the checks UI. It also follows a documented [exit-code contract](https://orchstep.dev/spec/output/)
+(`3` = bad workflow, `4` = assertion failed, `1` = step failed).
 
 ## Outputs
 

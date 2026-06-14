@@ -52,6 +52,13 @@ main() {
   local line
   while IFS= read -r line; do argv+=("$line"); done <<< "$cmd_raw"
 
+  # For `run`, default to CI-friendly plain output and optionally write a
+  # structured result file. extra-args can still override --output (last wins).
+  if [[ "$cmd" == "run" ]]; then
+    argv+=("--output" "${INPUT_OUTPUT:-plain}")
+    [[ -n "${INPUT_JSON_FILE:-}" ]] && argv+=("--json-file" "$INPUT_JSON_FILE")
+  fi
+
   if [[ -n "${INPUT_VARS:-}" ]]; then
     local var_raw
     if ! var_raw="$(printf '%s\n' "$INPUT_VARS" | parse_vars)"; then

@@ -30,6 +30,14 @@ inputs:
     description: 'Environment name passed as --env (dev, staging, production, ...)'
     required: false
     default: ''
+  output:
+    description: 'Output format for run: plain (default, CI-friendly), pretty, or json'
+    required: false
+    default: 'plain'
+  json-file:
+    description: 'Also write the structured run result (JSON) to this path'
+    required: false
+    default: ''
   working-directory:
     description: 'Directory to run from'
     required: false
@@ -92,6 +100,8 @@ runs:
         INPUT_VARS: ${{ inputs.vars }}
         INPUT_VARS_FILE: ${{ inputs.vars-file }}
         INPUT_ENV: ${{ inputs.env }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_JSON_FILE: ${{ inputs.json-file }}
         INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
         INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
         INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
