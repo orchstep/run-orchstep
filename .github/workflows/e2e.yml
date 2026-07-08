@@ -3,8 +3,9 @@ name: e2e
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: '0 6 * * *'
+  # Run on demand — the orchstep-release skill dispatches this after each release
+  # to validate the published run-orchstep action end-to-end. No daily cron:
+  # what's under test only changes at release time.
   workflow_dispatch:
 
 jobs:
